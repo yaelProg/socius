@@ -99,6 +99,8 @@ export function IsoBuilding({
             background: 'radial-gradient(circle at 35% 30%, #7ed07e, #49a349)',
             borderRadius: '46% 54% 50% 50% / 55% 55% 45% 45%',
             boxShadow: '0 6px 10px rgba(30,60,20,0.18)',
+            transformOrigin: 'bottom center',
+            animation: `vs-tree-sway ${3 + (b.gx + b.gy) % 3 * 0.5}s ease-in-out infinite`,
           }}
         />
       </div>

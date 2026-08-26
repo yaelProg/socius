@@ -198,3 +198,27 @@
   background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
   border-radius: 999px;
 }
+
+/* ---------- living world additions ---------- */
+@keyframes vs-tree-sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+@keyframes vs-flower {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+@keyframes vs-lamp-glow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+}
+@keyframes vs-live-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 50%, transparent); }
+  70% { box-shadow: 0 0 0 8px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes vs-count-bump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}

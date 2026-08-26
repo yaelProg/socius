@@ -1,6 +1,6 @@
 'use client'
 
-import type { Citizen, Opinion } from '@/lib/vs-types'
+import type { Citizen, Opinion, RelationshipType } from '@/lib/vs-types'
 import { X, MapPin, Briefcase, Heart } from 'lucide-react'
 
 const OPINION_META: Record<Opinion, { label: string; color: string; bg: string }> = {
@@ -8,6 +8,22 @@ const OPINION_META: Record<Opinion, { label: string; color: string; bg: string }
   considering: { label: 'Considering', color: 'var(--considering)', bg: 'color-mix(in oklch, var(--considering) 16%, transparent)' },
   neutral: { label: 'Neutral', color: 'var(--muted-foreground)', bg: 'var(--muted)' },
   negative: { label: 'Negative', color: 'var(--negative)', bg: 'color-mix(in oklch, var(--negative) 16%, transparent)' },
+}
+
+const REL_META: Record<RelationshipType, { emoji: string; label: string }> = {
+  partner: { emoji: '❤️', label: 'Partner' },
+  friend: { emoji: '👭', label: 'Friend' },
+  coworker: { emoji: '💼', label: 'Coworker' },
+  family: { emoji: '👨‍👩‍👧', label: 'Family' },
+}
+
+function traitLabel(openness: number, extraversion: number, agreeableness: number, riskTolerance: number) {
+  return [
+    { label: openness >= 70 ? 'Curious' : openness >= 45 ? 'Balanced' : 'Cautious', value: openness },
+    { label: extraversion >= 70 ? 'Social' : extraversion >= 45 ? 'Friendly' : 'Reserved', value: extraversion },
+    { label: agreeableness >= 70 ? 'Warm' : agreeableness >= 45 ? 'Fair' : 'Direct', value: agreeableness },
+    { label: riskTolerance >= 60 ? 'Risk-taker' : riskTolerance >= 40 ? 'Careful' : 'Price sensitive', value: riskTolerance },
+  ]
 }
 
 function Trait({ label, value }: { label: string; value: number }) {
@@ -82,10 +98,9 @@ export function CitizenPanel({
         <section>
           <h3 className="mb-2 font-display text-sm font-600 text-foreground">Personality</h3>
           <div className="space-y-2.5">
-            <Trait label="Openness" value={citizen.personality.openness} />
-            <Trait label="Extraversion" value={citizen.personality.extraversion} />
-            <Trait label="Agreeableness" value={citizen.personality.agreeableness} />
-            <Trait label="Risk tolerance" value={citizen.personality.riskTolerance} />
+            {traitLabel(citizen.personality.openness, citizen.personality.extraversion, citizen.personality.agreeableness, citizen.personality.riskTolerance).map((t) => (
+              <Trait key={t.label} label={t.label} value={t.value} />
+            ))}
           </div>
         </section>
 
@@ -101,6 +116,29 @@ export function CitizenPanel({
             ))}
           </div>
         </section>
+
+        <section>
+          <h3 className="mb-2 font-display text-sm font-600 text-foreground">Current activity</h3>
+          <p className="text-sm font-medium text-foreground">{citizen.currentActivity}</p>
+        </section>
+
+        {citizen.relationships.length > 0 && (
+          <section>
+            <h3 className="mb-2 font-display text-sm font-600 text-foreground">Relationships</h3>
+            <div className="space-y-1.5">
+              {citizen.relationships.map((r, i) => {
+                const m = REL_META[r.type]
+                return (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <span>{m.emoji}</span>
+                    <span className="font-medium text-foreground">{r.name}</span>
+                    <span className="text-muted-foreground">— {m.label}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         <section>
           <h3 className="mb-2 font-display text-sm font-600 text-foreground">Life story</h3>

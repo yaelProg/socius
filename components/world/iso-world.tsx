@@ -17,14 +17,16 @@ import {
   isoY,
   pointAt,
 } from '@/lib/vs-iso'
-import { BILLBOARDS, BUILDINGS, CAR_ROUTES, ROUTES } from '@/lib/vs-data'
+import { BILLBOARDS, BUILDINGS, BICYCLE_ROUTES, CAR_ROUTES, PROPS, ROUTES } from '@/lib/vs-data'
 import { IsoBuilding } from './iso-building'
+import { IsoProp } from './iso-prop'
 import { Minus, Plus, Locate } from 'lucide-react'
 
 export type Thought = { text: string; key: number; tone?: 'pos' | 'neg' | 'neu' }
 
 const BASE_SPEED = 1.15 // grid units / second at 1x
 const CAR_COLORS = ['#3b6bf0', '#ef4444', '#f59e0b', '#10b981']
+const BIKE_COLORS = ['#10b981', '#f59e0b']
 
 const ZONE_COLOR: Record<Neighborhood['zone'], string> = {
   positive: 'rgba(52,199,120,0.42)',
@@ -58,13 +60,17 @@ export function IsoWorld({
   heatmap?: boolean
   neighborhoods?: Neighborhood[]
   interactive?: boolean
+  experimentLive?: boolean
+  liveStats?: { positive: number; considering: number; neutral: number; negative: number; exposed: number; conversations: number; changed: number }
 }) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const spriteRefs = useRef<(HTMLDivElement | null)[]>([])
   const carRefs = useRef<(HTMLDivElement | null)[]>([])
+  const bikeRefs = useRef<(HTMLDivElement | null)[]>([])
   const lineRefs = useRef<(SVGLineElement | null)[]>([])
   const distRef = useRef<number[]>([])
   const carDistRef = useRef<number[]>([])
+  const bikeDistRef = useRef<number[]>([])
   const posRef = useRef<{ x: number; y: number }[]>([])
   const speedRef = useRef(speed)
   const convRef = useRef(showConversations)
@@ -92,6 +98,9 @@ export function IsoWorld({
   }
   if (carDistRef.current.length !== CAR_ROUTES.length) {
     carDistRef.current = CAR_ROUTES.map((_, i) => i * 9)
+  }
+  if (bikeDistRef.current.length !== BICYCLE_ROUTES.length) {
+    bikeDistRef.current = BICYCLE_ROUTES.map((_, i) => i * 14)
   }
 
   // fit to viewport
@@ -121,15 +130,21 @@ export function IsoWorld({
       const spd = speedRef.current
       for (let i = 0; i < citizens.length; i++) {
         const cz = citizens[i]
-        distRef.current[i] += dt * BASE_SPEED * cz.speed * spd
-        const p = pointAt(ROUTES[cz.route], distRef.current[i])
-        const x = isoX(p.gx, p.gy)
-        const y = isoY(p.gx, p.gy)
+        let x: number, y: number
+        if (cz.behavior === 'sit' && cz.fixedGx != null && cz.fixedGy != null) {
+          x = isoX(cz.fixedGx, cz.fixedGy)
+          y = isoY(cz.fixedGx, cz.fixedGy)
+        } else {
+          distRef.current[i] += dt * BASE_SPEED * cz.speed * spd
+          const p = pointAt(ROUTES[cz.route], distRef.current[i])
+          x = isoX(p.gx, p.gy)
+          y = isoY(p.gx, p.gy)
+        }
         posRef.current[i] = { x, y }
         const el = spriteRefs.current[i]
         if (el) {
           el.style.transform = `translate3d(${x - 15}px, ${y - 46}px, 0)`
-          el.style.zIndex = String(Math.round(depth(p.gx, p.gy) * 10) + 5)
+          el.style.zIndex = String(Math.round(depth(cz.fixedGx ?? 0, cz.fixedGy ?? 0) * 10) + 5)
         }
       }
       for (let i = 0; i < CAR_ROUTES.length; i++) {
@@ -140,6 +155,17 @@ export function IsoWorld({
         const el = carRefs.current[i]
         if (el) {
           el.style.transform = `translate3d(${x - 17}px, ${y - 20}px, 0)`
+          el.style.zIndex = String(Math.round(depth(p.gx, p.gy) * 10) + 4)
+        }
+      }
+      for (let i = 0; i < BICYCLE_ROUTES.length; i++) {
+        bikeDistRef.current[i] += dt * BASE_SPEED * 1.4 * spd
+        const p = pointAt(ROUTES[BICYCLE_ROUTES[i]], bikeDistRef.current[i])
+        const x = isoX(p.gx, p.gy)
+        const y = isoY(p.gx, p.gy)
+        const el = bikeRefs.current[i]
+        if (el) {
+          el.style.transform = `translate3d(${x - 10}px, ${y - 16}px, 0)`
           el.style.zIndex = String(Math.round(depth(p.gx, p.gy) * 10) + 4)
         }
       }
@@ -348,6 +374,11 @@ export function IsoWorld({
           />
         ))}
 
+        {/* decorative props */}
+        {PROPS.map((p) => (
+          <IsoProp key={p.id} p={p} />
+        ))}
+
         {/* billboards */}
         {BILLBOARDS.map((p, i) => {
           const x = isoX(p.gx, p.gy)
@@ -454,6 +485,24 @@ export function IsoWorld({
           </div>
         ))}
 
+        {/* bicycles */}
+        {BICYCLE_ROUTES.map((_, i) => (
+          <div
+            key={`bike-${i}`}
+            ref={(el) => {
+              bikeRefs.current[i] = el
+            }}
+            style={{ position: 'absolute', left: 0, top: 0, width: 20, height: 16, willChange: 'transform' }}
+            aria-hidden
+          >
+            <div style={{ position: 'relative', width: 20, height: 16 }}>
+              <div style={{ position: 'absolute', bottom: 0, left: 1, width: 8, height: 8, border: `2px solid ${BIKE_COLORS[i % BIKE_COLORS.length]}`, borderRadius: '50%' }} />
+              <div style={{ position: 'absolute', bottom: 0, right: 1, width: 8, height: 8, border: `2px solid ${BIKE_COLORS[i % BIKE_COLORS.length]}`, borderRadius: '50%' }} />
+              <div style={{ position: 'absolute', bottom: 4, left: 8, width: 2, height: 8, background: '#6b7280', transform: 'rotate(20deg)' }} />
+            </div>
+          </div>
+        ))}
+
         {/* citizens */}
         {citizens.map((cz, i) => {
           const selected = selectedCitizenId === cz.id
@@ -526,27 +575,46 @@ export function IsoWorld({
               )}
 
               {/* body */}
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: 3,
-                  left: 3,
-                  width: 24,
-                  height: 40,
-                  animation: 'vs-bob 0.9s ease-in-out infinite',
-                  animationPlayState: moving ? 'running' : 'paused',
-                }}
-              >
-                {/* legs */}
-                <div style={{ position: 'absolute', bottom: 0, left: 4, width: 6, height: 12, background: cz.palette.bottom, borderRadius: 2 }} />
-                <div style={{ position: 'absolute', bottom: 0, right: 4, width: 6, height: 12, background: cz.palette.bottom, borderRadius: 2 }} />
-                {/* torso */}
-                <div style={{ position: 'absolute', bottom: 10, left: 2, width: 20, height: 16, background: cz.palette.top, borderRadius: 5 }} />
-                {/* head */}
-                <div style={{ position: 'absolute', bottom: 22, left: 5, width: 14, height: 14, background: cz.palette.skin, borderRadius: 5 }} />
-                {/* hair */}
-                <div style={{ position: 'absolute', bottom: 31, left: 4, width: 16, height: 7, background: cz.palette.hair, borderRadius: '6px 6px 3px 3px' }} />
-              </div>
+              {cz.behavior === 'sit' ? (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 3,
+                    left: 4,
+                    width: 22,
+                    height: 30,
+                    animation: 'vs-bob 2.4s ease-in-out infinite',
+                    animationPlayState: moving ? 'running' : 'paused',
+                  }}
+                >
+                  <div style={{ position: 'absolute', bottom: 0, left: 2, width: 18, height: 8, background: cz.palette.bottom, borderRadius: 3 }} />
+                  <div style={{ position: 'absolute', bottom: 6, left: 3, width: 16, height: 14, background: cz.palette.top, borderRadius: 5 }} />
+                  <div style={{ position: 'absolute', bottom: 18, left: 4, width: 13, height: 13, background: cz.palette.skin, borderRadius: 5 }} />
+                  <div style={{ position: 'absolute', bottom: 27, left: 3, width: 15, height: 6, background: cz.palette.hair, borderRadius: '6px 6px 3px 3px' }} />
+                </div>
+              ) : (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 3,
+                    left: 3,
+                    width: 24,
+                    height: 40,
+                    animation: 'vs-bob 0.9s ease-in-out infinite',
+                    animationPlayState: moving ? 'running' : 'paused',
+                  }}
+                >
+                  {/* legs */}
+                  <div style={{ position: 'absolute', bottom: 0, left: 4, width: 6, height: 12, background: cz.palette.bottom, borderRadius: 2 }} />
+                  <div style={{ position: 'absolute', bottom: 0, right: 4, width: 6, height: 12, background: cz.palette.bottom, borderRadius: 2 }} />
+                  {/* torso */}
+                  <div style={{ position: 'absolute', bottom: 10, left: 2, width: 20, height: 16, background: cz.palette.top, borderRadius: 5 }} />
+                  {/* head */}
+                  <div style={{ position: 'absolute', bottom: 22, left: 5, width: 14, height: 14, background: cz.palette.skin, borderRadius: 5 }} />
+                  {/* hair */}
+                  <div style={{ position: 'absolute', bottom: 31, left: 4, width: 16, height: 7, background: cz.palette.hair, borderRadius: '6px 6px 3px 3px' }} />
+                </div>
+              )}
 
               {/* hover name */}
               <div
@@ -555,6 +623,7 @@ export function IsoWorld({
               >
                 {cz.name}, {cz.age}
                 <span className="block text-[9px] font-normal text-muted-foreground">{cz.job}</span>
+                <span className="block text-[9px] font-normal text-muted-foreground">{cz.moodEmoji} {cz.mood}</span>
               </div>
 
               {/* thought bubble */}
@@ -580,6 +649,57 @@ export function IsoWorld({
           )
         })}
       </div>
+
+      {/* EXPERIMENT LIVE badge */}
+      {experimentLive && (
+        <div className="pointer-events-none absolute left-1/2 top-16 z-30 -translate-x-1/2 sm:top-20">
+          <div
+            className="pointer-events-auto flex items-center gap-2 rounded-full border border-primary/30 bg-card/90 px-3.5 py-1.5 shadow-lg backdrop-blur"
+            style={{ animation: 'vs-live-pulse 2s ease-out infinite' }}
+          >
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
+            </span>
+            <span className="font-display text-xs font-700 tracking-wide text-primary">EXPERIMENT LIVE</span>
+          </div>
+        </div>
+      )}
+
+      {/* live reaction overlay */}
+      {experimentLive && liveStats && (
+        <div className="pointer-events-none absolute left-3 top-1/2 z-30 hidden -translate-y-1/2 sm:block">
+          <div className="pointer-events-auto w-44 rounded-2xl border border-border bg-card/90 p-3 shadow-lg backdrop-blur">
+            <div className="mb-2 flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+              </span>
+              <span className="font-display text-[11px] font-700 tracking-wide text-foreground">LIVE REACTIONS</span>
+            </div>
+            <div className="space-y-1.5">
+              <LiveRow emoji="❤️" label="Positive" value={liveStats.positive} color="var(--positive)" />
+              <LiveRow emoji="🤔" label="Considering" value={liveStats.considering} color="var(--considering)" />
+              <LiveRow emoji="😐" label="Neutral" value={liveStats.neutral} color="var(--muted-foreground)" />
+              <LiveRow emoji="👎" label="Negative" value={liveStats.negative} color="var(--negative)" />
+            </div>
+            <div className="mt-2.5 space-y-1 border-t border-border pt-2 text-[10px] text-muted-foreground">
+              <div className="flex items-center justify-between">
+                <span>Exposed</span>
+                <span className="font-bold tabular-nums text-foreground" key={liveStats.exposed}>{liveStats.exposed.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Conversations</span>
+                <span className="font-bold tabular-nums text-foreground" key={`c${liveStats.conversations}`}>{liveStats.conversations.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Opinions changed</span>
+                <span className="font-bold tabular-nums text-foreground" key={`o${liveStats.changed}`}>{liveStats.changed.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* zoom controls */}
       {interactive && (
@@ -607,6 +727,18 @@ export function IsoWorld({
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+function LiveRow({ emoji, label, value, color }: { emoji: string; label: string; value: number; color: string }) {
+  return (
+    <div className="flex items-center gap-1.5 text-[11px]">
+      <span>{emoji}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="ml-auto font-bold tabular-nums" style={{ color }} key={value}>
+        {value}%
+      </span>
     </div>
   )
 }

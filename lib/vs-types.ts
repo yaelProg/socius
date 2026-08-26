@@ -12,6 +12,15 @@ export type ActivityItem = {
   text: string
 }
 
+export type RelationshipType = 'partner' | 'friend' | 'coworker' | 'family'
+
+export type Relationship = {
+  name: string
+  type: RelationshipType
+}
+
+export type CitizenBehavior = 'walk' | 'sit' | 'stand'
+
 export type Citizen = {
   id: string
   name: string
@@ -29,8 +38,10 @@ export type Citizen = {
   mood: string
   moodEmoji: string
   activity: ActivityItem[]
+  currentActivity: string
   lifeStory: string
   palette: CitizenPalette
+  relationships: Relationship[]
   // experiment reaction
   initialOpinion: Opinion
   finalOpinion: Opinion
@@ -39,6 +50,11 @@ export type Citizen = {
   route: number
   phase: number
   speed: number
+  // visual behavior on the map
+  behavior?: CitizenBehavior
+  // fixed grid position for non-walking citizens (sit/stand)
+  fixedGx?: number
+  fixedGy?: number
 }
 
 export type BuildingType =
@@ -72,6 +88,22 @@ export type Neighborhood = {
   // approximate center on grid for the heatmap glow
   cx: number
   cy: number
+}
+
+export type PropType =
+  | 'bench'
+  | 'streetlight'
+  | 'flower'
+  | 'parkedcar'
+  | 'bicycle'
+
+export type Prop = {
+  id: string
+  type: PropType
+  gx: number
+  gy: number
+  rot?: number
+  color?: string
 }
 
 export type GridPoint = { gx: number; gy: number }

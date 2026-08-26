@@ -1,4 +1,4 @@
-import type { Building, Citizen, GridPoint, Neighborhood } from './vs-types'
+import type { Building, Citizen, GridPoint, Neighborhood, Prop } from './vs-types'
 
 // ---------------------------------------------------------------------------
 // ROADS: horizontal at gy 2/7/12, vertical at gx 2/7/12
@@ -222,3 +222,86 @@ export const CITIZENS: Citizen[] = [
   { id: 'c25', name: 'Boaz Naveh', age: 39, job: 'Product Manager', neighborhood: 'Tech District', segment: 'Families', personality: { openness: 72, extraversion: 62, agreeableness: 66, riskTolerance: 60 }, interests: ['Tech', 'Family', 'Cycling'], mood: 'Interested', moodEmoji: '🙂', activity: genericActivity('Tech District'), lifeStory: 'Boaz weighs features against family needs with a spreadsheet at hand.', palette: pal(1, 1, 0, 2), initialOpinion: 'considering', finalOpinion: 'positive', changeReason: 'Value for a growing family made sense.', route: 5, phase: 0.9, speed: 1.0 },
   { id: 'c26', name: 'Orly Gat', age: 60, job: 'Librarian', neighborhood: 'Old Town', segment: 'Older adults', personality: { openness: 56, extraversion: 46, agreeableness: 80, riskTolerance: 28 }, interests: ['Books', 'Gardening', 'Grandkids'], mood: 'Neutral', moodEmoji: '😐', activity: genericActivity('Old Town'), lifeStory: 'Orly is gentle and cautious, guided by her close-knit community.', palette: pal(4, 5, 5, 4), initialOpinion: 'negative', finalOpinion: 'neutral', changeReason: 'A trusted friend’s good experience opened her mind a little.', route: 6, phase: 0.25, speed: 0.8 },
 ]
+
+// ---------------------------------------------------------------------------
+// POST-PROCESS: current activity + relationships + some sitting/standing
+// ---------------------------------------------------------------------------
+const CURRENT: Record<string, string> = {
+  c1: 'Having coffee with Sarah', c2: 'Walking to the office', c3: 'Chatting at the café',
+  c4: 'Heading home from work', c5: 'Picking up the kids', c6: 'Serving customers at the café',
+  c7: 'Resting on a park bench', c8: 'Reading on a bench', c9: 'Cycling through Tech District',
+  c10: 'Driving to a client meeting', c11: 'Walking through Green Park', c12: 'Heading to a photoshoot',
+  c13: 'Walking to the hospital', c14: 'Strolling through Old Town', c15: 'Prepping the lunch rush',
+  c16: 'Sketching at a café table', c17: 'Minding the shop', c18: 'Meeting friends downtown',
+  c19: 'Walking to a job site', c20: 'Walking the dog', c21: 'Driving his taxi',
+  c22: 'Heading to an interview', c23: 'Walking to the garage', c24: 'Strolling after a shift',
+  c25: 'Cycling to a standup', c26: 'Reading on a park bench',
+}
+
+const RELS: Record<string, { name: string; type: 'partner' | 'friend' | 'coworker' | 'family' }[]> = {
+  c1: [{ name: 'Daniel', type: 'partner' }, { name: 'Sarah Cohen', type: 'friend' }, { name: 'Adam', type: 'coworker' }],
+  c2: [{ name: 'Tamar Golan', type: 'friend' }, { name: 'Boaz Naveh', type: 'coworker' }],
+  c3: [{ name: 'Maya Levi', type: 'friend' }, { name: 'Efrat Alon', type: 'coworker' }],
+  c4: [{ name: 'Yael Bar', type: 'family' }, { name: 'Amit Dror', type: 'friend' }],
+  c5: [{ name: 'David Mizrahi', type: 'family' }, { name: 'Michal Tal', type: 'friend' }],
+  c6: [{ name: 'Lior Ben-David', type: 'friend' }, { name: 'Gil Azoulay', type: 'friend' }],
+  c7: [{ name: 'Eitan Peretz', type: 'friend' }, { name: 'Orly Gat', type: 'friend' }],
+  c8: [{ name: 'Rivka Adler', type: 'friend' }, { name: 'Ronen Haim', type: 'friend' }],
+  c9: [{ name: 'Noam Katz', type: 'friend' }, { name: 'Hila Segal', type: 'coworker' }],
+  c10: [{ name: 'Boaz Naveh', type: 'coworker' }, { name: 'Yossi Barkat', type: 'friend' }],
+  c11: [{ name: 'Noa Shapira', type: 'friend' }, { name: 'Keren Mor', type: 'coworker' }],
+  c12: [{ name: 'Omer Shani', type: 'friend' }, { name: 'Maya Levi', type: 'coworker' }],
+  c13: [{ name: 'Dana Friedman', type: 'friend' }, { name: 'Keren Mor', type: 'coworker' }],
+  c14: [{ name: 'Moshe Klein', type: 'friend' }, { name: 'Doron Levy', type: 'friend' }],
+  c15: [{ name: 'Omer Shani', type: 'friend' }, { name: 'Gil Azoulay', type: 'coworker' }],
+  c16: [{ name: 'Tamar Golan', type: 'friend' }, { name: 'Shira Ronen', type: 'coworker' }],
+  c17: [{ name: 'Ronen Haim', type: 'friend' }, { name: 'Yossi Barkat', type: 'friend' }],
+  c18: [{ name: 'Shira Ronen', type: 'friend' }, { name: 'Hila Segal', type: 'friend' }],
+  c19: [{ name: 'David Mizrahi', type: 'friend' }, { name: 'Doron Levy', type: 'coworker' }],
+  c20: [{ name: 'Yael Bar', type: 'friend' }, { name: 'Noa Shapira', type: 'friend' }],
+  c21: [{ name: 'Moshe Klein', type: 'friend' }, { name: 'Avi Regev', type: 'coworker' }],
+  c22: [{ name: 'Sarah Cohen', type: 'friend' }, { name: 'Efrat Alon', type: 'coworker' }],
+  c23: [{ name: 'Yossi Barkat', type: 'friend' }, { name: 'Amit Dror', type: 'coworker' }],
+  c24: [{ name: 'Keren Mor', type: 'friend' }, { name: 'Dana Friedman', type: 'coworker' }],
+  c25: [{ name: 'Noam Katz', type: 'coworker' }, { name: 'Avi Regev', type: 'friend' }],
+  c26: [{ name: 'Rivka Adler', type: 'friend' }, { name: 'Eitan Peretz', type: 'friend' }],
+}
+
+const SITTING: Record<string, { gx: number; gy: number }> = {
+  c7: { gx: 8.5, gy: 8.5 },
+  c8: { gx: 10, gy: 9.2 },
+  c26: { gx: 9, gy: 10.5 },
+}
+
+CITIZENS.forEach((c) => {
+  c.currentActivity = CURRENT[c.id] ?? 'Walking around the city'
+  c.relationships = RELS[c.id] ?? []
+  if (SITTING[c.id]) {
+    c.behavior = 'sit'
+    c.fixedGx = SITTING[c.id].gx
+    c.fixedGy = SITTING[c.id].gy
+  }
+})
+
+// ---------------------------------------------------------------------------
+// DECORATIVE PROPS (benches, streetlights, flowers, parked cars, bicycles)
+// ---------------------------------------------------------------------------
+export const PROPS: Prop[] = [
+  { id: 'p-bench1', type: 'bench', gx: 8.3, gy: 8.8, rot: 0 },
+  { id: 'p-bench2', type: 'bench', gx: 10.2, gy: 9.5, rot: 90 },
+  { id: 'p-bench3', type: 'bench', gx: 8.8, gy: 10.6, rot: 0 },
+  { id: 'p-sl1', type: 'streetlight', gx: 4, gy: 2 },
+  { id: 'p-sl2', type: 'streetlight', gx: 10, gy: 2 },
+  { id: 'p-sl3', type: 'streetlight', gx: 2, gy: 9 },
+  { id: 'p-sl4', type: 'streetlight', gx: 12, gy: 5 },
+  { id: 'p-sl5', type: 'streetlight', gx: 7, gy: 11 },
+  { id: 'p-fl1', type: 'flower', gx: 2.4, gy: 7.6 },
+  { id: 'p-fl2', type: 'flower', gx: 6.6, gy: 8.4 },
+  { id: 'p-fl3', type: 'flower', gx: 11.6, gy: 6.4 },
+  { id: 'p-pc1', type: 'parkedcar', gx: 6.4, gy: 7.8, color: '#ef4444' },
+  { id: 'p-pc2', type: 'parkedcar', gx: 11.6, gy: 2.4, color: '#10b981' },
+  { id: 'p-bike1', type: 'bicycle', gx: 2.6, gy: 8.2 },
+  { id: 'p-bike2', type: 'bicycle', gx: 8.2, gy: 6.4 },
+]
+
+export const BICYCLE_ROUTES = [1, 2]

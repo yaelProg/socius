@@ -38,8 +38,10 @@ export default function Page() {
   const [reacted, setReacted] = useState(false)
   const [thoughts, setThoughts] = useState<Record<string, Thought>>({})
   const [progress, setProgress] = useState(0)
+  const [liveStats, setLiveStats] = useState<{ positive: number; considering: number; neutral: number; negative: number; exposed: number; conversations: number; changed: number } | null>(null)
 
   const thoughtTimers = useRef<ReturnType<typeof setTimeout>[]>([])
+  const liveTimers = useRef<ReturnType<typeof setInterval>[]>([])
 
   const effectiveSpeed = paused ? 0 : speed
 
@@ -59,6 +61,38 @@ export default function Page() {
       setProgress(0)
       setSpeed(2)
       setPaused(false)
+      setLiveStats({ positive: 0, considering: 0, neutral: 0, negative: 0, exposed: 0, conversations: 0, changed: 0 })
+
+      // gradual live stats timer
+      liveTimers.current.forEach(clearInterval)
+      liveTimers.current = []
+      const totalExposed = 1284
+      const totalConversations = 328
+      const totalChanged = 74
+      const finalPositive = 42
+      const finalConsidering = 26
+      const finalNeutral = 19
+      const finalNegative = 13
+      const statsInterval = setInterval(() => {
+        setLiveStats((prev) => {
+          if (!prev) return prev
+          const elapsed = prev.exposed + Math.floor(totalExposed / 52) + Math.floor(Math.random() * 8)
+          const exposed = Math.min(totalExposed, elapsed)
+          const conversations = Math.min(totalConversations, Math.floor((exposed / totalExposed) * totalConversations))
+          const changed = Math.min(totalChanged, Math.floor((exposed / totalExposed) * totalChanged))
+          const ratio = exposed / totalExposed
+          return {
+            positive: Math.round(finalPositive * ratio),
+            considering: Math.round(finalConsidering * ratio),
+            neutral: Math.round(finalNeutral * ratio),
+            negative: Math.round(finalNegative * ratio),
+            exposed,
+            conversations,
+            changed,
+          }
+        })
+      }, 100)
+      liveTimers.current.push(statsInterval)
 
       // emit rolling thought bubbles as the idea spreads
       thoughtTimers.current.forEach(clearTimeout)
@@ -85,6 +119,8 @@ export default function Page() {
         setReacted(true)
         setSpreading(false)
         setShowResults(true)
+        liveTimers.current.forEach(clearInterval)
+        setLiveStats(null)
       }, duration + 500)
       thoughtTimers.current.push(done)
     },
@@ -94,12 +130,15 @@ export default function Page() {
   const resetExperiment = useCallback(() => {
     thoughtTimers.current.forEach(clearTimeout)
     thoughtTimers.current = []
+    liveTimers.current.forEach(clearInterval)
+    liveTimers.current = []
     setThoughts({})
     setExperiment(null)
     setReacted(false)
     setShowResults(false)
     setSpreading(false)
     setProgress(0)
+    setLiveStats(null)
     setShowModal(true)
   }, [])
 
@@ -110,7 +149,10 @@ export default function Page() {
     return () => clearTimeout(t)
   }, [thoughts])
 
-  useEffect(() => () => thoughtTimers.current.forEach(clearTimeout), [])
+  useEffect(() => () => {
+    thoughtTimers.current.forEach(clearTimeout)
+    liveTimers.current.forEach(clearInterval)
+  }, [])
 
   const campaign = useMemo(
     () => (experiment ? { title: experiment.title } : null),
@@ -149,6 +191,8 @@ export default function Page() {
         showConversations={spreading}
         heatmap={reacted}
         neighborhoods={NEIGHBORHOODS}
+        experimentLive={spreading}
+        liveStats={liveStats ?? undefined}
       />
 
       {/* top bar */}
