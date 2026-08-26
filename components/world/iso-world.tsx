@@ -372,21 +372,23 @@ export function IsoWorld({
                   borderRadius: 8,
                   background: active
                     ? 'linear-gradient(135deg, #3b6bf0, #6d9bff)'
-                    : 'linear-gradient(135deg, #b8c2d4, #cdd6e4)',
-                  color: '#fff',
+                    : 'linear-gradient(135deg, #eef1f6, #dfe5ee)',
+                  color: active ? '#fff' : '#9aa4b4',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   textAlign: 'center',
-                  fontSize: 8,
-                  fontWeight: 700,
+                  fontSize: active ? 8 : 11,
+                  fontWeight: 800,
+                  letterSpacing: active ? 0 : 1,
                   lineHeight: 1.05,
                   padding: 4,
-                  border: '2px solid rgba(255,255,255,0.7)',
+                  border: active ? '2px solid rgba(255,255,255,0.8)' : '2px solid #cbd3df',
+                  boxShadow: '0 3px 6px rgba(30,45,80,0.18)',
                   animation: active ? 'vs-billboard-glow 2s ease-in-out infinite' : undefined,
                 }}
               >
-                {active ? campaign?.title ?? 'AD' : ''}
+                {active ? campaign?.title ?? 'AD' : 'AD'}
               </div>
               <div style={{ width: 5, height: 40, background: '#7a828f', margin: '0 auto', borderRadius: 2 }} />
             </div>
