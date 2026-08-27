@@ -199,8 +199,10 @@ export function IsoWorld({
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (!interactive) return
+      // Do NOT capture the pointer here. Capturing on press redirects the
+      // resulting click to this container, which would swallow citizen clicks.
+      // We only capture once an actual drag starts (see onPointerMove).
       drag.current = { active: true, sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y, moved: false }
-      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     },
     [interactive, pan],
   )
@@ -208,8 +210,14 @@ export function IsoWorld({
     if (!drag.current.active) return
     const dx = e.clientX - drag.current.sx
     const dy = e.clientY - drag.current.sy
-    if (Math.abs(dx) + Math.abs(dy) > 4) drag.current.moved = true
-    setPan({ x: drag.current.px + dx, y: drag.current.py + dy })
+    if (Math.abs(dx) + Math.abs(dy) > 4 && !drag.current.moved) {
+      // A real drag has begun: now capture the pointer so panning stays smooth.
+      drag.current.moved = true
+      try {
+        ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      } catch {}
+    }
+    if (drag.current.moved) setPan({ x: drag.current.px + dx, y: drag.current.py + dy })
   }, [])
   const onPointerUp = useCallback(() => {
     drag.current.active = false
