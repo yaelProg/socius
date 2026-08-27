@@ -1,187 +1,120 @@
-'use client'
+"use client";
 
-import type { Citizen, Neighborhood } from '@/lib/vs-types'
-import type { Experiment } from './experiment-modal'
-import { X, TrendingUp, Users, RotateCcw } from 'lucide-react'
+import { Button } from "@/components/ui/button";
+import type { ExperimentResult } from "@/lib/vs-types";
 
-const ZONE = {
-  positive: { label: 'Enthusiastic', color: 'var(--positive)' },
-  mixed: { label: 'Divided', color: 'var(--considering)' },
-  negative: { label: 'Resistant', color: 'var(--negative)' },
+interface ResultsOverlayProps {
+  open: boolean;
+  results: ExperimentResult[];
+  onClose: () => void;
 }
 
-export function ResultsOverlay({
-  experiment,
-  citizens,
-  neighborhoods,
-  onClose,
-  onReset,
-}: {
-  experiment: Experiment
-  citizens: Citizen[]
-  neighborhoods: Neighborhood[]
-  onClose: () => void
-  onReset: () => void
-}) {
-  const total = citizens.length
-  const counts = citizens.reduce(
-    (acc, c) => {
-      acc[c.finalOpinion] = (acc[c.finalOpinion] ?? 0) + 1
-      return acc
-    },
-    {} as Record<string, number>,
-  )
-  const positive = counts.positive ?? 0
-  const considering = counts.considering ?? 0
-  const negative = (counts.negative ?? 0) + (counts.neutral ?? 0)
-  const changed = citizens.filter((c) => c.initialOpinion !== c.finalOpinion).length
+export function ResultsOverlay({ open, results, onClose }: ResultsOverlayProps) {
+  if (!open || results.length === 0) return null;
 
-  const pct = (n: number) => Math.round((n / total) * 100)
+  const maxFood = Math.max(...results.map((r) => r.food), 1);
+  const maxWood = Math.max(...results.map((r) => r.wood), 1);
+  const maxStone = Math.max(...results.map((r) => r.stone), 1);
+  const maxKnowledge = Math.max(...results.map((r) => r.knowledge), 1);
 
-  const bars = [
-    { label: 'Positive', n: positive, color: 'var(--positive)' },
-    { label: 'Considering', n: considering, color: 'var(--considering)' },
-    { label: 'Not interested', n: negative, color: 'var(--negative)' },
-  ]
-
-  const approval = pct(positive)
+  const final = results[results.length - 1];
+  const initial = results[0];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="vs-scrollbar max-h-dvh w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-border bg-card shadow-2xl sm:rounded-3xl">
-        {/* header */}
-        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-card px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-card rounded-2xl border border-border shadow-2xl p-6 animate-scale-in scrollbar-thin"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wide text-primary">Experiment results</span>
-            <h2 className="font-display text-xl font-700 leading-tight text-foreground">{experiment.title}</h2>
+            <h2 className="text-2xl font-bold">Experiment Results</h2>
+            <p className="text-sm text-muted-foreground">{results.length} days simulated</p>
           </div>
-          <button
-            onClick={onClose}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-secondary-foreground transition hover:brightness-95"
-            aria-label="Close results"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            &times;
+          </Button>
         </div>
 
-        <div className="space-y-6 px-5 py-5">
-          {/* headline stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <Stat icon={<TrendingUp className="h-4 w-4" />} value={`${approval}%`} label="Overall approval" tone="var(--positive)" />
-            <Stat icon={<Users className="h-4 w-4" />} value={changed.toLocaleString()} label="Changed their mind" tone="var(--primary)" />
-            <Stat icon={<Users className="h-4 w-4" />} value={total.toLocaleString()} label="Citizens reached" tone="var(--considering)" />
-          </div>
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <SummaryCard label="Food" value={final.food} delta={final.food - initial.food} color="#4ade80" />
+          <SummaryCard label="Wood" value={final.wood} delta={final.wood - initial.wood} color="#fbbf24" />
+          <SummaryCard label="Stone" value={final.stone} delta={final.stone - initial.stone} color="#888888" />
+          <SummaryCard label="Knowledge" value={final.knowledge} delta={final.knowledge - initial.knowledge} color="#c084fc" />
+        </div>
 
-          {/* sentiment bars */}
-          <section>
-            <h3 className="mb-3 font-display text-sm font-600 text-foreground">Overall sentiment</h3>
-            <div className="space-y-3">
-              {bars.map((b) => (
-                <div key={b.label}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{b.label}</span>
-                    <span className="font-bold text-foreground">{pct(b.n)}%</span>
-                  </div>
-                  <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${pct(b.n)}%`, background: b.color }}
-                    />
-                  </div>
+        {/* Charts */}
+        <div className="space-y-4 mb-6">
+          <ChartRow label="Food" data={results.map((r) => r.food)} max={maxFood} color="#4ade80" />
+          <ChartRow label="Wood" data={results.map((r) => r.wood)} max={maxWood} color="#fbbf24" />
+          <ChartRow label="Stone" data={results.map((r) => r.stone)} max={maxStone} color="#888888" />
+          <ChartRow label="Knowledge" data={results.map((r) => r.knowledge)} max={maxKnowledge} color="#c084fc" />
+        </div>
+
+        {/* Events */}
+        {results.some((r) => r.events.length > 0) && (
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold mb-2">Notable Events</h3>
+            <div className="space-y-1 max-h-32 overflow-y-auto scrollbar-thin">
+              {results.filter((r) => r.events.length > 0).map((r) => (
+                <div key={r.day} className="text-xs text-muted-foreground">
+                  <span className="font-medium">Day {r.day}:</span> {r.events.join(", ")}
                 </div>
               ))}
             </div>
-          </section>
-
-          {/* neighborhood heatmap breakdown */}
-          <section>
-            <h3 className="mb-3 font-display text-sm font-600 text-foreground">By neighborhood</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {neighborhoods.map((n) => {
-                const z = ZONE[n.zone]
-                return (
-                  <div key={n.id} className="rounded-2xl border border-border bg-background p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-display text-sm font-600 text-foreground">{n.name}</span>
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                        style={{ color: z.color, background: `color-mix(in oklch, ${z.color} 16%, transparent)` }}
-                      >
-                        {z.label}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-end gap-1">
-                      <span className="font-display text-2xl font-700 tabular-nums" style={{ color: z.color }}>
-                        {n.positive}%
-                      </span>
-                      <span className="pb-1 text-xs text-muted-foreground">positive</span>
-                    </div>
-                    <ul className="mt-2 space-y-1">
-                      {n.concerns.map((c, i) => (
-                        <li key={i} className="truncate text-xs italic text-muted-foreground">
-                          {c}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-
-          {/* insight */}
-          <section className="rounded-2xl bg-primary/10 p-4">
-            <h3 className="mb-1 font-display text-sm font-700 text-primary">Key insight</h3>
-            <p className="text-sm leading-relaxed text-foreground">
-              {experiment.title} resonated most with{' '}
-              <span className="font-semibold">young adults and the Tech District</span>, where affordability
-              and design drove enthusiasm. Resistance concentrated in{' '}
-              <span className="font-semibold">Old Town</span>, where price and unfamiliarity remain barriers.
-              Consider a targeted follow-up to convert the &ldquo;considering&rdquo; segment.
-            </p>
-          </section>
-
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              onClick={onClose}
-              className="flex-1 rounded-2xl bg-primary px-5 py-3 font-display text-sm font-700 text-primary-foreground shadow transition hover:brightness-105"
-            >
-              Explore the reactions
-            </button>
-            <button
-              onClick={onReset}
-              className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-secondary"
-            >
-              <RotateCcw className="h-4 w-4" /> Run another
-            </button>
           </div>
-        </div>
+        )}
+
+        <Button className="w-full" onClick={onClose}>
+          Close
+        </Button>
       </div>
     </div>
-  )
+  );
 }
 
-function Stat({
-  icon,
-  value,
-  label,
-  tone,
-}: {
-  icon: React.ReactNode
-  value: string
-  label: string
-  tone: string
-}) {
+function SummaryCard({ label, value, delta, color }: { label: string; value: number; delta: number; color: string }) {
+  const positive = delta >= 0;
   return (
-    <div className="rounded-2xl border border-border bg-background p-3 text-center">
-      <span
-        className="mx-auto mb-1 grid h-8 w-8 place-items-center rounded-xl"
-        style={{ color: tone, background: `color-mix(in oklch, ${tone} 14%, transparent)` }}
-      >
-        {icon}
-      </span>
-      <div className="font-display text-xl font-700 tabular-nums text-foreground">{value}</div>
-      <div className="text-[11px] leading-tight text-muted-foreground">{label}</div>
+    <div className="p-3 rounded-lg border border-border bg-background/50">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+        <span className="text-xs text-muted-foreground">{label}</span>
+      </div>
+      <div className="text-lg font-bold tabular-nums">{value}</div>
+      <div className={`text-xs tabular-nums ${positive ? "text-success" : "text-destructive"}`}>
+        {positive ? "+" : ""}{delta}
+      </div>
     </div>
-  )
+  );
+}
+
+function ChartRow({ label, data, max, color }: { label: string; data: number[]; max: number; color: string }) {
+  const points = data
+    .map((v, i) => {
+      const x = (i / (data.length - 1)) * 100;
+      const y = 100 - (v / max) * 100;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs text-muted-foreground w-16 shrink-0">{label}</span>
+      <div className="flex-1 h-10 relative">
+        <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <polyline
+            points={points}
+            fill="none"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      </div>
+    </div>
+  );
 }

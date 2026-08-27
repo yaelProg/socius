@@ -1,109 +1,78 @@
-export type Opinion = 'positive' | 'considering' | 'neutral' | 'negative'
+export type CitizenRole = "farmer" | "builder" | "trader" | "guard" | "scholar";
 
-export type CitizenPalette = {
-  skin: string
-  hair: string
-  top: string
-  bottom: string
+export interface Citizen {
+  id: string;
+  name: string;
+  role: CitizenRole;
+  x: number;
+  y: number;
+  health: number;
+  happiness: number;
+  productivity: number;
 }
 
-export type ActivityItem = {
-  time: string
-  text: string
+export interface Building {
+  id: string;
+  type: "house" | "farm" | "market" | "tower" | "library";
+  gridX: number;
+  gridY: number;
+  width: number;
+  depth: number;
+  height: number;
+  color: string;
+  roofColor: string;
 }
 
-export type RelationshipType = 'partner' | 'friend' | 'coworker' | 'family'
-
-export type Relationship = {
-  name: string
-  type: RelationshipType
+export interface Prop {
+  id: string;
+  type: "tree" | "rock" | "bush" | "flower" | "path";
+  gridX: number;
+  gridY: number;
 }
 
-export type CitizenBehavior = 'walk' | 'sit' | 'stand'
-
-export type Citizen = {
-  id: string
-  name: string
-  age: number
-  job: string
-  neighborhood: string
-  segment: 'Young adults' | 'Families' | 'Older adults'
-  personality: {
-    openness: number
-    extraversion: number
-    agreeableness: number
-    riskTolerance: number
-  }
-  interests: string[]
-  mood: string
-  moodEmoji: string
-  activity: ActivityItem[]
-  currentActivity: string
-  lifeStory: string
-  palette: CitizenPalette
-  relationships: Relationship[]
-  // experiment reaction
-  initialOpinion: Opinion
-  finalOpinion: Opinion
-  changeReason?: string
-  // placement on the map: which route + phase offset (0..1) + speed
-  route: number
-  phase: number
-  speed: number
-  // visual behavior on the map
-  behavior?: CitizenBehavior
-  // fixed grid position for non-walking citizens (sit/stand)
-  fixedGx?: number
-  fixedGy?: number
+export interface WorldState {
+  citizens: Citizen[];
+  buildings: Building[];
+  props: Prop[];
+  gridWidth: number;
+  gridDepth: number;
+  resources: {
+    food: number;
+    wood: number;
+    stone: number;
+    knowledge: number;
+  };
+  day: number;
+  population: number;
 }
 
-export type BuildingType =
-  | 'house'
-  | 'apartment'
-  | 'office'
-  | 'cafe'
-  | 'supermarket'
-  | 'park'
-  | 'tree'
-
-export type Building = {
-  id: string
-  type: BuildingType
-  label?: string
-  neighborhood?: string
-  gx: number
-  gy: number
-  w: number // footprint tiles along x
-  d: number // footprint tiles along y
-  h: number // height in tiles
-  billboard?: boolean
+export interface ExperimentConfig {
+  populationSize: number;
+  initialResources: {
+    food: number;
+    wood: number;
+    stone: number;
+  };
+  roles: {
+    farmer: number;
+    builder: number;
+    trader: number;
+    guard: number;
+    scholar: number;
+  };
+  duration: number;
+  difficulty: "easy" | "normal" | "hard";
 }
 
-export type Neighborhood = {
-  id: string
-  name: string
-  positive: number
-  zone: 'positive' | 'mixed' | 'negative'
-  concerns: string[]
-  // approximate center on grid for the heatmap glow
-  cx: number
-  cy: number
+export interface ExperimentResult {
+  day: number;
+  population: number;
+  food: number;
+  wood: number;
+  stone: number;
+  knowledge: number;
+  happiness: number;
+  events: string[];
 }
 
-export type PropType =
-  | 'bench'
-  | 'streetlight'
-  | 'flower'
-  | 'parkedcar'
-  | 'bicycle'
-
-export type Prop = {
-  id: string
-  type: PropType
-  gx: number
-  gy: number
-  rot?: number
-  color?: string
-}
-
-export type GridPoint = { gx: number; gy: number }
+export type GamePhase = "setup" | "generating" | "playing" | "results";

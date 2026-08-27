@@ -1,184 +1,161 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Users, Sparkles, ArrowRight, Building2, Home, TreePine } from 'lucide-react'
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { DEFAULT_CONFIG, type ExperimentConfig } from "@/lib/vs-data";
+import type { CitizenRole } from "@/lib/vs-types";
 
-export type SocietyConfig = {
-  name: string
-  size: number
-  segments: string[]
-  vibe: string
+interface SetupScreenProps {
+  onStart: (config: ExperimentConfig) => void;
 }
 
-const SEGMENTS = [
-  { id: 'Young adults', emoji: '🎓', desc: 'Ages 18–35' },
-  { id: 'Families', emoji: '👨‍👩‍👧', desc: 'Households with kids' },
-  { id: 'Older adults', emoji: '👵', desc: 'Ages 55+' },
-]
+const ROLE_INFO: Record<CitizenRole, { label: string; desc: string; icon: string }> = {
+  farmer: { label: "Farmers", desc: "Produce food to sustain the population", icon: "🌾" },
+  builder: { label: "Builders", desc: "Gather wood for construction", icon: "🔨" },
+  trader: { label: "Traders", desc: "Generate mixed resources through trade", icon: "💰" },
+  guard: { label: "Guards", desc: "Protect the settlement from threats", icon: "🛡️" },
+  scholar: { label: "Scholars", desc: "Research knowledge for breakthroughs", icon: "📚" },
+};
 
-const VIBES = [
-  { id: 'balanced', label: 'Balanced City', icon: Building2, desc: 'A realistic mix of everyone' },
-  { id: 'trendy', label: 'Trendsetters', icon: Sparkles, desc: 'Early adopters & influencers' },
-  { id: 'suburban', label: 'Suburban', icon: Home, desc: 'Family-first neighborhoods' },
-  { id: 'traditional', label: 'Traditional', icon: TreePine, desc: 'Slower to change, loyal' },
-]
+export function SetupScreen({ onStart }: SetupScreenProps) {
+  const [config, setConfig] = useState<ExperimentConfig>(DEFAULT_CONFIG);
 
-const SIZES = [1000, 10000, 100000]
+  const totalAssigned =
+    config.roles.farmer +
+    config.roles.builder +
+    config.roles.trader +
+    config.roles.guard +
+    config.roles.scholar;
 
-export function SetupScreen({ onCreate }: { onCreate: (cfg: SocietyConfig) => void }) {
-  const [name, setName] = useState('New Harbor')
-  const [size, setSize] = useState(10000)
-  const [segments, setSegments] = useState<string[]>(['Young adults', 'Families', 'Older adults'])
-  const [vibe, setVibe] = useState('balanced')
+  const canStart = totalAssigned === config.populationSize && config.populationSize > 0;
 
-  const toggleSegment = (id: string) =>
-    setSegments((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
+  const adjustRole = (role: CitizenRole, delta: number) => {
+    setConfig((prev) => {
+      const newCount = Math.max(0, prev.roles[role] + delta);
+      const newTotal = Object.values({ ...prev.roles, [role]: newCount }).reduce((a, b) => a + b, 0);
+      if (newTotal > prev.populationSize) return prev;
+      return { ...prev, roles: { ...prev.roles, [role]: newCount } };
+    });
+  };
 
-  const canCreate = name.trim().length > 0 && segments.length > 0
+  const adjustPopulation = (delta: number) => {
+    setConfig((prev) => {
+      const newPop = Math.max(1, Math.min(20, prev.populationSize + delta));
+      const roles = { ...prev.roles };
+      let assigned = Object.values(roles).reduce((a, b) => a + b, 0);
+      if (assigned > newPop) {
+        const order: CitizenRole[] = ["scholar", "guard", "trader", "builder", "farmer"];
+        for (const r of order) {
+          while (roles[r] > 0 && assigned > newPop) {
+            roles[r]--;
+            assigned--;
+          }
+        }
+      }
+      return { ...prev, populationSize: newPop, roles };
+    });
+  };
 
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-gradient-to-b from-[oklch(0.9_0.06_235)] via-background to-[oklch(0.9_0.08_150)]">
-      {/* floating decorative clouds */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        {[
-          { top: '8%', left: '10%', s: 1.2 },
-          { top: '20%', right: '12%', s: 1.6 },
-          { top: '55%', left: '6%', s: 1 },
-        ].map((c, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full bg-white/50 blur-md"
-            style={{
-              top: c.top,
-              left: (c as { left?: string }).left,
-              right: (c as { right?: string }).right,
-              width: 130 * c.s,
-              height: 44 * c.s,
-              animation: `vs-cloud ${20 + i * 5}s ease-in-out infinite alternate`,
-            }}
-          />
-        ))}
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+      <div className="w-full max-w-2xl bg-card rounded-2xl border border-border shadow-xl p-8 animate-scale-in">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold tracking-tight mb-2">IsoWorld</h1>
+          <p className="text-muted-foreground">Configure your isometric society simulation</p>
+        </div>
 
-      <div className="relative mx-auto flex min-h-dvh max-w-2xl flex-col justify-center px-5 py-10">
-        <header className="mb-8 text-center">
-          <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-xs font-semibold text-primary backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5" /> Virtual Society
-          </span>
-          <h1 className="text-balance font-display text-4xl font-700 leading-[1.05] text-foreground sm:text-5xl">
-            Build a world.
-            <br />
-            Test your idea on it.
-          </h1>
-          <p className="mx-auto mt-3 max-w-md text-pretty text-sm leading-relaxed text-muted-foreground">
-            Create a living population of simulated people, then watch how they react to your ads,
-            products and events — before you try them on anyone real.
-          </p>
-        </header>
-
-        <div className="space-y-5 rounded-3xl border border-border bg-card/80 p-5 shadow-xl backdrop-blur sm:p-6">
-          {/* name */}
-          <div>
-            <label htmlFor="soc-name" className="mb-1.5 block font-display text-sm font-600 text-foreground">
-              Name your society
-            </label>
-            <input
-              id="soc-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
-              placeholder="e.g. New Harbor"
-            />
+        <div className="space-y-6">
+          {/* Population */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Population Size</label>
+              <span className="text-2xl font-bold tabular-nums">{config.populationSize}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="icon" onClick={() => adjustPopulation(-1)}>-</Button>
+              <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{ width: `${(config.populationSize / 20) * 100}%` }}
+                />
+              </div>
+              <Button variant="outline" size="icon" onClick={() => adjustPopulation(1)}>+</Button>
+            </div>
           </div>
 
-          {/* size */}
-          <div>
-            <span className="mb-1.5 block font-display text-sm font-600 text-foreground">Population size</span>
-            <div className="grid grid-cols-3 gap-2">
-              {SIZES.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSize(s)}
-                  className={`flex flex-col items-center gap-0.5 rounded-2xl border px-2 py-3 transition ${
-                    size === s
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:border-primary/40'
-                  }`}
+          {/* Role Distribution */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Role Distribution</label>
+              <span className={`text-xs tabular-nums ${totalAssigned === config.populationSize ? "text-success" : "text-destructive"}`}>
+                {totalAssigned} / {config.populationSize} assigned
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {(Object.keys(ROLE_INFO) as CitizenRole[]).map((role) => (
+                <div
+                  key={role}
+                  className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary/50 transition-colors"
                 >
-                  <Users className="h-4 w-4" />
-                  <span className="text-sm font-bold">{s.toLocaleString()}</span>
-                </button>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{ROLE_INFO[role].icon}</span>
+                    <div>
+                      <div className="text-sm font-medium">{ROLE_INFO[role].label}</div>
+                      <div className="text-xs text-muted-foreground">{ROLE_INFO[role].desc}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => adjustRole(role, -1)}
+                      disabled={config.roles[role] === 0}
+                    >
+                      -
+                    </Button>
+                    <span className="w-8 text-center font-semibold tabular-nums">{config.roles[role]}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => adjustRole(role, 1)}
+                      disabled={totalAssigned >= config.populationSize}
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
 
-          {/* segments */}
-          <div>
-            <span className="mb-1.5 block font-display text-sm font-600 text-foreground">
-              Who lives here?
-            </span>
-            <div className="grid grid-cols-3 gap-2">
-              {SEGMENTS.map((seg) => {
-                const on = segments.includes(seg.id)
-                return (
-                  <button
-                    key={seg.id}
-                    onClick={() => toggleSegment(seg.id)}
-                    className={`rounded-2xl border px-2 py-3 text-center transition ${
-                      on
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border bg-background hover:border-primary/40'
-                    }`}
-                  >
-                    <div className="text-2xl leading-none">{seg.emoji}</div>
-                    <div className={`mt-1 text-xs font-bold ${on ? 'text-primary' : 'text-foreground'}`}>
-                      {seg.id}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">{seg.desc}</div>
-                  </button>
-                )
-              })}
+          {/* Duration */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Simulation Duration (days)</label>
+              <span className="text-lg font-bold tabular-nums">{config.duration}</span>
             </div>
+            <input
+              type="range"
+              min={5}
+              max={60}
+              step={5}
+              value={config.duration}
+              onChange={(e) => setConfig({ ...config, duration: Number(e.target.value) })}
+              className="w-full accent-primary"
+            />
           </div>
 
-          {/* vibe */}
-          <div>
-            <span className="mb-1.5 block font-display text-sm font-600 text-foreground">Society character</span>
-            <div className="grid grid-cols-2 gap-2">
-              {VIBES.map((v) => {
-                const Icon = v.icon
-                const on = vibe === v.id
-                return (
-                  <button
-                    key={v.id}
-                    onClick={() => setVibe(v.id)}
-                    className={`flex items-start gap-2.5 rounded-2xl border px-3 py-2.5 text-left transition ${
-                      on ? 'border-primary bg-primary/10' : 'border-border bg-background hover:border-primary/40'
-                    }`}
-                  >
-                    <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl ${on ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <span>
-                      <span className={`block text-sm font-bold ${on ? 'text-primary' : 'text-foreground'}`}>{v.label}</span>
-                      <span className="block text-[11px] leading-tight text-muted-foreground">{v.desc}</span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <button
-            disabled={!canCreate}
-            onClick={() => onCreate({ name: name.trim(), size, segments, vibe })}
-            className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 font-display text-base font-700 text-primary-foreground shadow-lg transition enabled:hover:brightness-105 enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+          {/* Start Button */}
+          <Button
+            className="w-full"
+            size="lg"
+            disabled={!canStart}
+            onClick={() => onStart(config)}
           >
-            Generate my society
-            <ArrowRight className="h-5 w-5 transition group-hover:translate-x-0.5" />
-          </button>
+            {canStart ? "Start Simulation" : "Assign all citizens to continue"}
+          </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }
