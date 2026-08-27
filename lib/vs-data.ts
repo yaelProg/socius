@@ -228,12 +228,12 @@ export const CITIZENS: Citizen[] = [
 // ---------------------------------------------------------------------------
 const CURRENT: Record<string, string> = {
   c1: 'Having coffee with Sarah', c2: 'Walking to the office', c3: 'Chatting at the café',
-  c4: 'Heading home from work', c5: 'Picking up the kids', c6: 'Serving customers at the café',
+  c4: 'Waiting to cross the street', c5: 'Picking up the kids', c6: 'Serving customers at the café',
   c7: 'Resting on a park bench', c8: 'Reading on a bench', c9: 'Cycling through Tech District',
-  c10: 'Driving to a client meeting', c11: 'Walking through Green Park', c12: 'Heading to a photoshoot',
+  c10: 'Driving to a client meeting', c11: 'Chatting with a neighbor', c12: 'Heading to a photoshoot',
   c13: 'Walking to the hospital', c14: 'Strolling through Old Town', c15: 'Prepping the lunch rush',
   c16: 'Sketching at a café table', c17: 'Minding the shop', c18: 'Meeting friends downtown',
-  c19: 'Walking to a job site', c20: 'Walking the dog', c21: 'Driving his taxi',
+  c19: 'Walking to a job site', c20: 'Catching up with a friend', c21: 'Driving his taxi',
   c22: 'Heading to an interview', c23: 'Walking to the garage', c24: 'Strolling after a shift',
   c25: 'Cycling to a standup', c26: 'Reading on a park bench',
 }
@@ -273,6 +273,14 @@ const SITTING: Record<string, { gx: number; gy: number }> = {
   c26: { gx: 9, gy: 10.5 },
 }
 
+// A few citizens stand still to make the city feel calm and lived-in:
+// c11 + c20 chat together near the Green Park homes, c4 waits by the road.
+const STANDING: Record<string, { gx: number; gy: number }> = {
+  c11: { gx: 4.4, gy: 4.5 },
+  c20: { gx: 4.95, gy: 4.5 },
+  c4: { gx: 2.6, gy: 8.6 },
+}
+
 CITIZENS.forEach((c) => {
   c.currentActivity = CURRENT[c.id] ?? 'Walking around the city'
   c.relationships = RELS[c.id] ?? []
@@ -280,8 +288,34 @@ CITIZENS.forEach((c) => {
     c.behavior = 'sit'
     c.fixedGx = SITTING[c.id].gx
     c.fixedGy = SITTING[c.id].gy
+  } else if (STANDING[c.id]) {
+    c.behavior = 'stand'
+    c.fixedGx = STANDING[c.id].gx
+    c.fixedGy = STANDING[c.id].gy
   }
 })
+
+// ---------------------------------------------------------------------------
+// Pick a small emoji that matches a citizen's current activity (frontend only)
+// ---------------------------------------------------------------------------
+export function activityEmoji(text: string): string {
+  const t = text.toLowerCase()
+  if (t.includes('coffee') || t.includes('café') || t.includes('cafe') || t.includes('barista')) return '☕'
+  if (t.includes('cycl') || t.includes('bike')) return '🚴'
+  if (t.includes('driv') || t.includes('taxi') || t.includes('cross the street')) return '🚗'
+  if (t.includes('shop') || t.includes('market') || t.includes('customers')) return '🛍️'
+  if (t.includes('read') || t.includes('book')) return '📖'
+  if (t.includes('bench') || t.includes('rest') || t.includes('park')) return '🌳'
+  if (t.includes('kid') || t.includes('dog')) return '🐕'
+  if (t.includes('photo') || t.includes('shoot') || t.includes('sketch')) return '📷'
+  if (t.includes('lunch') || t.includes('kitchen')) return '🍽️'
+  if (t.includes('garage') || t.includes('job site')) return '🔧'
+  if (t.includes('chat') || t.includes('catching up') || t.includes('meeting friends') || t.includes('friend')) return '💬'
+  if (t.includes('hospital') || t.includes('shift')) return '🏥'
+  if (t.includes('office') || t.includes('work') || t.includes('standup') || t.includes('client') || t.includes('interview') || t.includes('shop')) return '💼'
+  if (t.includes('walk') || t.includes('heading') || t.includes('stroll')) return '🚶'
+  return '🙂'
+}
 
 // ---------------------------------------------------------------------------
 // DECORATIVE PROPS (benches, streetlights, flowers, parked cars, bicycles)

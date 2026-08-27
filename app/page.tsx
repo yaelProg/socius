@@ -295,7 +295,7 @@ export default function Page() {
       {/* citizen panel */}
       {selected && (
         <div className="absolute inset-y-0 right-0 z-40 w-full max-w-sm p-3 sm:p-4">
-          <CitizenPanel citizen={selected} onClose={() => setSelected(null)} showReaction={reacted} />
+          <CitizenPanel citizen={selected} onClose={() => setSelected(null)} showReaction={reacted} onSelectCitizen={openCitizen} />
         </div>
       )}
 

@@ -17,7 +17,7 @@ import {
   isoY,
   pointAt,
 } from '@/lib/vs-iso'
-import { BILLBOARDS, BUILDINGS, BICYCLE_ROUTES, CAR_ROUTES, PROPS, ROUTES } from '@/lib/vs-data'
+import { BILLBOARDS, BUILDINGS, BICYCLE_ROUTES, CAR_ROUTES, PROPS, ROUTES, activityEmoji } from '@/lib/vs-data'
 import { IsoBuilding } from './iso-building'
 import { IsoProp } from './iso-prop'
 import { Minus, Plus, Locate } from 'lucide-react'
@@ -133,7 +133,7 @@ export function IsoWorld({
       for (let i = 0; i < citizens.length; i++) {
         const cz = citizens[i]
         let x: number, y: number
-        if (cz.behavior === 'sit' && cz.fixedGx != null && cz.fixedGy != null) {
+        if ((cz.behavior === 'sit' || cz.behavior === 'stand') && cz.fixedGx != null && cz.fixedGy != null) {
           x = isoX(cz.fixedGx, cz.fixedGy)
           y = isoY(cz.fixedGx, cz.fixedGy)
         } else {
@@ -602,7 +602,7 @@ export function IsoWorld({
                     left: 3,
                     width: 24,
                     height: 40,
-                    animation: 'vs-bob 0.9s ease-in-out infinite',
+                    animation: cz.behavior === 'stand' ? 'vs-bob 3.2s ease-in-out infinite' : 'vs-bob 0.9s ease-in-out infinite',
                     animationPlayState: moving ? 'running' : 'paused',
                   }}
                 >
@@ -618,14 +618,18 @@ export function IsoWorld({
                 </div>
               )}
 
-              {/* hover name */}
+              {/* hover card */}
               <div
-                className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-card px-2 py-1 text-[10px] font-semibold text-card-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100"
-                style={{ bottom: 50, zIndex: 20 }}
+                className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-xl border border-border/70 bg-card/95 px-2.5 py-1.5 text-center shadow-xl backdrop-blur-sm opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                style={{ bottom: 52, zIndex: 20 }}
               >
-                {cz.name}, {cz.age}
-                <span className="block text-[9px] font-normal text-muted-foreground">{cz.job}</span>
-                <span className="block text-[9px] font-normal text-muted-foreground">{cz.moodEmoji} {cz.mood}</span>
+                <div className="text-[11px] font-700 leading-tight text-card-foreground">
+                  {cz.name}, {cz.age}
+                </div>
+                <div className="text-[9px] font-medium leading-tight text-muted-foreground">{cz.job}</div>
+                <div className="mt-0.5 text-[10px] font-semibold leading-tight text-foreground">
+                  {activityEmoji(cz.currentActivity)} {cz.currentActivity}
+                </div>
               </div>
 
               {/* thought bubble */}
