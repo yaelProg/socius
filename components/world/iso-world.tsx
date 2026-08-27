@@ -47,6 +47,8 @@ export function IsoWorld({
   heatmap,
   neighborhoods = [],
   interactive = true,
+  experimentLive = false,
+  liveStats,
 }: {
   citizens: Citizen[]
   selectedCitizenId?: string | null
